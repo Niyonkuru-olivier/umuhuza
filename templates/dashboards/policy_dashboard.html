@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Policy Maker Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #fff8e1; margin: 0; padding: 0; }
+    header { background: #e65100; color: white; padding: 15px; text-align: center; }
+    .container { padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+    .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: transform 0.2s; cursor: pointer; }
+    .card:hover { transform: scale(1.03); }
+    h2 { color: #e65100; }
+    .stats { font-size: 18px; margin-top: 10px; color: #333; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Welcome, {{ user.full_name }} (Policy Maker)</h1>
+  </header>
+  <div class="container">
+
+    <div class="card" onclick="window.location.href='/users/farmer'">
+      <h2>👨‍🌾 Farmers</h2>
+      <p class="stats">{{ stats.farmers }} registered</p>
+    </div>
+
+    <div class="card" onclick="window.location.href='/users/promoter'">
+      <h2>🌱 Farmer Promoters</h2>
+      <p class="stats">{{ stats.promoters }} registered</p>
+    </div>
+
+    <div class="card" onclick="window.location.href='/users/dealer'">
+      <h2>🏪 Agro-Dealers</h2>
+      <p class="stats">{{ stats.dealers }} registered</p>
+    </div>
+
+    <div class="card" onclick="window.location.href='/users/processor'">
+      <h2>🏭 Processors & Customers</h2>
+      <p class="stats">{{ stats.processors }} registered</p>
+    </div>
+
+    <div class="card" onclick="window.location.href='/users/researcher'">
+      <h2>🔬 Researchers & Experts</h2>
+      <p class="stats">{{ stats.researchers }} registered</p>
+    </div>
+
+    <div class="card" onclick="window.location.href='/users/policy'">
+      <h2>🏛️ Policy Makers</h2>
+      <p class="stats">{{ stats.policymakers }} registered</p>
+    </div>
+
+    <div class="card">
+      <h2>📑 Reports</h2>
+      <p>Monthly productivity reports available for review.</p>
+    </div>
+
+    <div class="card">
+      <h2>⚠️ Alerts</h2>
+      <p>Upcoming drought risk in Eastern Province.</p>
+    </div>
+
+  </div>
+</body>
+</html>

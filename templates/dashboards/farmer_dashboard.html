@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Farmer Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 0; }
+    header { background: #2d9d92; color: white; padding: 15px; text-align: center; }
+    .container { padding: 20px; max-width: 1200px; margin: auto; display: flex; justify-content: space-between; gap: 15px; }
+
+    /* Accordion Buttons */
+    .accordion-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .accordion {
+      background-color: #2d9d92;
+      color: white;
+      cursor: pointer;
+      padding: 15px;
+      width: 100%;
+      text-align: center;
+      border: none;
+      outline: none;
+      transition: 0.4s;
+      border-radius: 5px;
+      margin-bottom: 5px;
+      font-size: 18px;
+    }
+
+    .accordion.active, .accordion:hover { background-color: #23897d; }
+
+    .panel {
+      padding: 10px;
+      display: none;
+      background-color: white;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      overflow-x: auto;
+    }
+
+    .chart-container { width: 100%; height: 300px; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #2d9d92; color: white; }
+    .tip-section { margin-bottom: 15px; }
+    .tip-section h3 { margin-top: 0; color: #2d9d92; }
+    .tip-section ul { padding-left: 20px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Welcome, {{ user.full_name }} (Farmer)</h1>
+  </header>
+
+  <div class="container">
+    <!-- Weather Forecast -->
+    <div class="accordion-container">
+      <button class="accordion">🌦 Weather Forecast</button>
+      <div class="panel">
+        {% if weather_data.time %}
+          <canvas id="temperatureChart" class="chart-container"></canvas>
+          <canvas id="rainfallChart" class="chart-container"></canvas>
+        {% else %}
+          <p class="small">Weather data not available.</p>
+          {% if weather_data.error %}<p class="small">Error: {{ weather_data.error }}</p>{% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Market Prices -->
+    <div class="accordion-container">
+      <button class="accordion">📈 Market Prices</button>
+      <div class="panel">
+        {% if market_prices %}
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Commodity</th>
+                <th>Price</th>
+                <th>Province</th>
+                <th>Unit</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for mp in market_prices %}
+              <tr>
+                <td>{{ mp.id }}</td>
+                <td>{{ mp.commodity }}</td>
+                <td>{{ mp.price }}</td>
+                <td>{{ mp.province or '-' }}</td>
+                <td>{{ mp.unit or '-' }}</td>
+                <td>{{ mp.date }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="small">Market price data not available.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Farming Tips -->
+    <div class="accordion-container">
+      <button class="accordion">💡 Farming Tips</button>
+      <div class="panel">
+        <div class="tip-section">
+          <h3>Crop-Specific Advice</h3>
+          <ul>
+            <li>Maize: Use improved seeds, plant 25–30 cm apart, monitor for stem borers.</li>
+            <li>Beans: Rotate crops to reduce soil-borne diseases.</li>
+            <li>Irish Potatoes: Ensure proper drainage and avoid planting too deep.</li>
+          </ul>
+        </div>
+        <div class="tip-section">
+          <h3>Weather-Based Tips</h3>
+          <ul>
+            <li>Plant maize seedlings before light rains expected this week.</li>
+            <li>Water crops in early morning or late evening during high temperature days.</li>
+          </ul>
+        </div>
+        <div class="tip-section">
+          <h3>Market-Informed Tips</h3>
+          <ul>
+            <li>Focus on harvesting crops with high current market demand.</li>
+            <li>Beans prices are trending high in Kigali — consider selling.</li>
+          </ul>
+        </div>
+        <div class="tip-section">
+          <h3>Sustainable Practices</h3>
+          <ul>
+            <li>Use composting and crop rotation for soil fertility.</li>
+            <li>Implement integrated pest management (IPM).</li>
+            <li>Use efficient irrigation techniques and harvest rainwater.</li>
+          </ul>
+        </div>
+        <div class="tip-section">
+          <h3>Health & Safety</h3>
+          <ul>
+            <li>Handle fertilizers and pesticides safely.</li>
+            <li>Store crops properly to reduce post-harvest losses.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Accordion: Only one open at a time
+    const acc = document.getElementsByClassName("accordion");
+    for (let i = 0; i < acc.length; i++) {
+      acc[i].addEventListener("click", function() {
+        for (let j = 0; j < acc.length; j++) {
+          if (acc[j] !== this) {
+            acc[j].classList.remove("active");
+            acc[j].nextElementSibling.style.display = "none";
+          }
+        }
+        this.classList.toggle("active");
+        const panel = this.nextElementSibling;
+        panel.style.display = (panel.style.display === "block") ? "none" : "block";
+      });
+    }
+
+    {% if weather_data.time %}
+    const labels = {{ weather_data.time | tojson }};
+    const tempMax = {{ weather_data.temperature_2m_max | tojson }};
+    const tempMin = {{ weather_data.temperature_2m_min | tojson }};
+    const rainfall = {{ weather_data.precipitation_sum | tojson }};
+
+    const tempCtx = document.getElementById('temperatureChart').getContext('2d');
+    new Chart(tempCtx, { type: 'line', data: { labels: labels, datasets: [
+        { label: 'Max Temp (°C)', data: tempMax, borderColor: 'rgba(255,99,132,1)', backgroundColor: 'rgba(255,99,132,0.2)', fill: true },
+        { label: 'Min Temp (°C)', data: tempMin, borderColor: 'rgba(54,162,235,1)', backgroundColor: 'rgba(54,162,235,0.2)', fill: true }
+      ]}, options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: false } } }
+    });
+
+    const rainCtx = document.getElementById('rainfallChart').getContext('2d');
+    new Chart(rainCtx, { type: 'bar', data: { labels: labels, datasets: [{ label: 'Rainfall (mm)', data: rainfall, backgroundColor: 'rgba(75,192,192,0.6)' }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+    {% endif %}
+  </script>
+</body>
+</html>

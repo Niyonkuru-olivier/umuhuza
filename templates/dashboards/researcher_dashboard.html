@@ -1,0 +1,174 @@
+<!-- templates/dashboards/researcher_dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Researcher Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background: #eef2fb; margin: 0; padding: 0; }
+    header { background: #283593; color: white; padding: 15px; text-align: center; }
+    .container { padding: 20px; max-width: 1100px; margin: auto; display: flex; flex-direction: column; gap: 15px; }
+
+    .accordion { background-color: #283593; color: white; cursor: pointer; padding: 20px; text-align: center;
+                 font-size: 18px; border: none; outline: none; transition: 0.4s; border-radius: 8px;
+                 box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .accordion.active, .accordion:hover { background-color: #1a237e; }
+    .panel { padding: 15px; display: none; background-color: white; border-radius: 8px;
+             box-shadow: 0 2px 5px rgba(0,0,0,0.1); animation: fadeIn 0.3s ease-in-out; overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #283593; color: white; }
+    a.download-btn { display: inline-block; margin-top: 10px; padding: 10px 15px; background: #283593; color: white; text-decoration: none; border-radius: 5px; }
+    a.download-btn:hover { background: #1a237e; }
+
+    .chart-container { margin-top: 20px; }
+    canvas { width: 100% !important; height: 350px !important; }
+
+    .nisr-title { background:#fff3e0; padding:12px; border-radius:6px; color:#6b4226; font-weight:600; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Welcome, {{ user.full_name }} (Researcher)</h1>
+  </header>
+
+  <div class="container">
+
+    <!-- Market Prices (DB) -->
+    <button class="accordion">📊 Market Price Data (DB)</button>
+    <div class="panel">
+      <h2>Market Price Dataset (Database preview)</h2>
+      {% if market_prices %}
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Commodity</th><th>Price</th><th>Province</th><th>Unit</th><th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for mp in market_prices[:10] %}
+            <tr>
+              <td>{{ mp.id }}</td><td>{{ mp.commodity }}</td><td>{{ mp.price }}</td><td>{{ mp.province or '-' }}</td><td>{{ mp.unit or '-' }}</td><td>{{ mp.date }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <a href="{{ url_for('download_market_prices') }}" class="download-btn">⬇ Download Full Dataset (CSV)</a>
+
+        {% if chart_data %}
+        <div class="chart-container"><h3>📈 Price Trends Over Time</h3><canvas id="lineChart"></canvas></div>
+        <div class="chart-container"><h3>📊 Average Price by Commodity</h3><canvas id="barChart"></canvas></div>
+        {% endif %}
+
+      {% else %}
+        <p>No market price data available in database.</p>
+      {% endif %}
+    </div>
+
+    <!-- NISR Dataset: only show title + charts (no data table) -->
+    <button class="accordion">📑 NISR Dataset (External)</button>
+    <div class="panel">
+      <div class="nisr-title">This is the NISR dataset for crops (Tables_2025_Season_A).</div>
+      <p style="margin-top:10px;">You can download the full NISR XLSX and view the summary charts below.</p>
+      <a href="{{ url_for('download_nisr_dataset') }}" class="download-btn">⬇ Download NISR Dataset (XLSX)</a>
+
+      {% if nisr_chart_data %}
+        <div class="chart-container"><h3>📊 NISR Average Prices by Commodity</h3><canvas id="nisrBarChart"></canvas></div>
+        <div class="chart-container"><h3>📈 NISR Price Distribution (Histogram)</h3><canvas id="nisrHistChart"></canvas></div>
+      {% else %}
+        <p style="margin-top:12px;">NISR dataset charts are not available (file missing or incorrect format).</p>
+      {% endif %}
+    </div>
+
+    <!-- Research Collaborations -->
+    <button class="accordion">🔬 Research Collaborations</button>
+    <div class="panel">
+      <h2>Soil Health Improvement Project</h2>
+      <p>- Collaboration with universities and NGOs.</p>
+      <p>- Focus: Sustainable soil fertility & productivity.</p>
+    </div>
+
+    <!-- Policy Briefs -->
+    <button class="accordion">📢 Policy Briefs</button>
+    <div class="panel">
+      <h2>Climate-Smart Agriculture Policy</h2>
+      <p>- Input on irrigation, pest management, and seed resilience.</p>
+    </div>
+
+  </div>
+
+  <script>
+    // Accordion toggle (only one opened)
+    const acc = document.getElementsByClassName("accordion");
+    for (let i = 0; i < acc.length; i++) {
+      acc[i].addEventListener("click", function() {
+        for (let j = 0; j < acc.length; j++) {
+          if (acc[j] !== this) {
+            acc[j].classList.remove("active");
+            acc[j].nextElementSibling.style.display = "none";
+          }
+        }
+        this.classList.toggle("active");
+        const panel = this.nextElementSibling;
+        panel.style.display = (panel.style.display === "block") ? "none" : "block";
+      });
+    }
+
+    // DB charts (chart_data)
+    {% if chart_data %}
+    const dbPrices = {{ chart_data|tojson }};
+    new Chart(document.getElementById('lineChart'), {
+      type: 'line',
+      data: {
+        labels: dbPrices.dates,
+        datasets: Object.keys(dbPrices.commodities).map((c, idx) => ({
+          label: c,
+          data: dbPrices.commodities[c],
+          borderWidth: 2,
+          fill: false,
+          tension: 0.1
+        }))
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    new Chart(document.getElementById('barChart'), {
+      type: 'bar',
+      data: {
+        labels: Object.keys(dbPrices.avg_prices),
+        datasets: [{ label: 'Average Price (DB)', data: Object.values(dbPrices.avg_prices), backgroundColor: '#283593' }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+    {% endif %}
+
+    // NISR charts (nisr_chart_data) - bar + histogram
+    {% if nisr_chart_data %}
+    const nisr = {{ nisr_chart_data|tojson }};
+
+    new Chart(document.getElementById('nisrBarChart'), {
+      type: 'bar',
+      data: {
+        labels: nisr.commodities,
+        datasets: [{ label: 'NISR Avg Price', data: nisr.avg_prices, backgroundColor: '#1a237e' }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+
+    new Chart(document.getElementById('nisrHistChart'), {
+      type: 'bar',
+      data: {
+        labels: nisr.histogram_bins,
+        datasets: [{ label: 'Count', data: nisr.histogram_counts, backgroundColor: '#4caf50' }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+    {% endif %}
+  </script>
+</body>
+</html>

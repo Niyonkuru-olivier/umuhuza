@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Processor & Customer Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #fdfdfd; margin: 0; padding: 0; }
+    header { background: #6a1b9a; color: white; padding: 15px; text-align: center; }
+    .container { padding: 20px; }
+    .card { background: white; padding: 15px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    h2 { color: #6a1b9a; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Welcome, {{ user.full_name }} (Processor & Customer)</h1>
+  </header>
+  <div class="container">
+    <div class="card">
+      <h2>🌾 Available Crops</h2>
+      <ul><li>100kg Maize (Farmer A)</li><li>50kg Beans (Farmer B)</li></ul>
+    </div>
+    <div class="card">
+      <h2>📜 Quality Certifications</h2>
+      <p>3 Products have been certified this month.</p>
+    </div>
+    <div class="card">
+      <h2>🚚 Logistics</h2>
+      <p>Next delivery scheduled for Friday.</p>
+    </div>
+  </div>
+</body>
+</html>
