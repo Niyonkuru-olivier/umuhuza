@@ -39,41 +39,32 @@
   <div class="container">
 
     <!-- Market Prices (DB) -->
-    <button class="accordion">📊 Market Price Data (DB)</button>
+    <button class="accordion">📊 Market Price Data </button>
     <div class="panel">
-      <h2>Market Price Dataset (Database preview)</h2>
-      {% if market_prices %}
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th><th>Commodity</th><th>Price</th><th>Province</th><th>Unit</th><th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for mp in market_prices[:10] %}
-            <tr>
-              <td>{{ mp.id }}</td><td>{{ mp.commodity }}</td><td>{{ mp.price }}</td><td>{{ mp.province or '-' }}</td><td>{{ mp.unit or '-' }}</td><td>{{ mp.date }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <p>The Market price data provides insights into the pricing trends of various commodities Over
+      time especially in 2025. This dataset is crucial for researchers analyzing market dynamics, price fluctuations,
+      and economic factors affecting agricuture in Rwanda. in This Dataset we take the example onn th
+commodity of Beans, Maize and Cassava      </p>
+      <h2>Market Price Dataset</h2>
+      <a href="{{ url_for('download_market_prices') }}" class="download-btn">⬇ Download Full Dataset (CSV)</a>
 
-        <a href="{{ url_for('download_market_prices') }}" class="download-btn">⬇ Download Full Dataset (CSV)</a>
-
-        {% if chart_data %}
-        <div class="chart-container"><h3>📈 Price Trends Over Time</h3><canvas id="lineChart"></canvas></div>
-        <div class="chart-container"><h3>📊 Average Price by Commodity</h3><canvas id="barChart"></canvas></div>
-        {% endif %}
-
+      {% if chart_data %}
+      <div class="chart-container"><h3>📈 Price Trends Over Time</h3><canvas id="lineChart"></canvas></div>
+      <div class="chart-container"><h3>📊 Average Price by Commodity</h3><canvas id="barChart"></canvas></div>
+      <div class="chart-container"><h3>🥧 Average Price Share by Commodity</h3><canvas id="dbPieChart"></canvas></div>
       {% else %}
-        <p>No market price data available in database.</p>
+      <p>No market price chart data available.</p>
       {% endif %}
     </div>
 
     <!-- NISR Dataset: only show title + charts (no data table) -->
-    <button class="accordion">📑 NISR Dataset (External)</button>
+    <button class="accordion">📑 NISR Dataset</button>
     <div class="panel">
-      <div class="nisr-title">This is the NISR dataset for crops (Tables_2025_Season_A).</div>
+      <p>This Dataset provides insights into the agricultural practices and outputs in Rwanda, with
+        focusing on crop Production, yields, and related metrics for the year 2025. It is essential 
+        for researchers studying agricultural trends, food security, and rural development in Rwanda.
+      </p>
+      <div class="nisr-title">This is the NISR dataset for crops (2025 Season A).</div>
       <p style="margin-top:10px;">You can download the full NISR XLSX and view the summary charts below.</p>
       <a href="{{ url_for('download_nisr_dataset') }}" class="download-btn">⬇ Download NISR Dataset (XLSX)</a>
 
@@ -82,6 +73,19 @@
         <div class="chart-container"><h3>📈 NISR Price Distribution (Histogram)</h3><canvas id="nisrHistChart"></canvas></div>
       {% else %}
         <p style="margin-top:12px;">NISR dataset charts are not available (file missing or incorrect format).</p>
+      {% endif %}
+
+      <hr style="margin:24px 0; border: none; border-top:1px solid #eee;"/>
+      <div class="nisr-title">Rwanda Maize Production (2025 vs 2024) by Province</div>
+      <p style="margin-top:10px;">Download the maize production CSV and explore interactive charts.</p>
+      <a href="{{ url_for('download_maize_dataset') }}" class="download-btn">⬇ Download Maize Dataset (CSV)</a>
+
+      {% if maize_data %}
+        <div class="chart-container"><h3>📊 Production by Province (2024 vs 2025)</h3><canvas id="maizeBarChart"></canvas></div>
+        <div class="chart-container"><h3>📈 Change Percentage Distribution (Histogram)</h3><canvas id="maizeHistChart"></canvas></div>
+        <div class="chart-container"><h3>🥧 2025 Production Share by Province</h3><canvas id="maizePieChart"></canvas></div>
+      {% else %}
+        <p style="margin-top:12px;">Maize dataset is not available.</p>
       {% endif %}
     </div>
 
@@ -126,13 +130,15 @@
       type: 'line',
       data: {
         labels: dbPrices.dates,
-        datasets: Object.keys(dbPrices.commodities).map((c, idx) => ({
-          label: c,
-          data: dbPrices.commodities[c],
-          borderWidth: 2,
-          fill: false,
-          tension: 0.1
-        }))
+        datasets: Object.keys(dbPrices.commodities).map(function(c, idx) {
+          return {
+            label: c,
+            data: dbPrices.commodities[c],
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1
+          };
+        })
       },
       options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
     });
@@ -145,6 +151,21 @@
       },
       options: { responsive: true, plugins: { legend: { display: false } } }
     });
+
+    // Pie chart for average prices share by commodity
+    (function(){
+      var labels = Object.keys(dbPrices.avg_prices);
+      var values = Object.values(dbPrices.avg_prices);
+      var colors = ['#1e88e5','#43a047','#f4511e','#8e24aa','#fdd835','#5e35b1','#00acc1','#fb8c00','#6d4c41','#00897b','#3949ab'];
+      new Chart(document.getElementById('dbPieChart'), {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{ data: values, backgroundColor: labels.map(function(_, i){ return colors[i % colors.length]; }) }]
+        },
+        options: { responsive: true }
+      });
+    })();
     {% endif %}
 
     // NISR charts (nisr_chart_data) - bar + histogram
@@ -167,6 +188,44 @@
         datasets: [{ label: 'Count', data: nisr.histogram_counts, backgroundColor: '#4caf50' }]
       },
       options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+    {% endif %}
+
+    // Maize charts (maize_data) - grouped bar, histogram, pie
+    {% if maize_data %}
+    const maize = {{ maize_data|tojson }};
+
+    // Grouped bar: 2024 vs 2025 by province
+    new Chart(document.getElementById('maizeBarChart'), {
+      type: 'bar',
+      data: {
+        labels: maize.provinces,
+        datasets: [
+          { label: '2024 Production (MT)', data: maize.prod_2024, backgroundColor: '#90caf9' },
+          { label: '2025 Production (MT)', data: maize.prod_2025, backgroundColor: '#1e88e5' }
+        ]
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    // Histogram: Change % distribution across districts
+    if (maize.histogram_bins && maize.histogram_counts) {
+      new Chart(document.getElementById('maizeHistChart'), {
+        type: 'bar',
+        data: { labels: maize.histogram_bins, datasets: [{ label: 'District Count', data: maize.histogram_counts, backgroundColor: '#43a047' }] },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+      });
+    }
+
+    // Pie: 2025 share by province
+    const pieColors = ['#1e88e5', '#43a047', '#f4511e', '#8e24aa', '#fdd835', '#5e35b1', '#00acc1', '#fb8c00'];
+    new Chart(document.getElementById('maizePieChart'), {
+      type: 'pie',
+      data: {
+        labels: maize.provinces,
+        datasets: [{ data: maize.prod_2025, backgroundColor: maize.provinces.map(function(label, i) { return pieColors[i % pieColors.length]; }) }]
+      },
+      options: { responsive: true }
     });
     {% endif %}
   </script>

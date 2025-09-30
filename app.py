@@ -4,6 +4,9 @@ from datetime import datetime
 from flask import send_from_directory, render_template
 import requests
 
+from sqlalchemy import desc
+from datetime import date
+
 # ---------------- Third-party Packages ----------------
 import pandas as pd
 from flask import (
@@ -69,8 +72,74 @@ class MarketPrice(db.Model):
     province = db.Column(db.String(100), nullable=True)  # New column
     date = db.Column(db.Date, nullable=False)
     unit = db.Column(db.String(20), nullable=True)
-
     
+    
+    # ---------------- Dealer models (paste near other models) ----------------
+class Inventory(db.Model):
+    __tablename__ = 'inventory'
+    id = db.Column(db.Integer, primary_key=True)
+    dealer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    product_name = db.Column(db.String(150), nullable=False)
+    stock = db.Column(db.Integer, nullable=False, default=0)
+    unit = db.Column(db.String(20), default='kg')
+    price = db.Column(db.Numeric(10,2), nullable=True)
+    last_updated = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+class Order(db.Model):
+    __tablename__ = 'orders'
+    id = db.Column(db.Integer, primary_key=True)
+    farmer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    dealer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    # Extended for processor/customer workflows
+    processor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    product_name = db.Column(db.String(150), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    unit = db.Column(db.String(20), default='kg')
+    status = db.Column(db.Enum('pending', 'approved', 'rejected', 'delivered', name='order_status'), nullable=False, default='pending')
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, nullable=True)
+
+class Subsidy(db.Model):
+    __tablename__ = 'subsidies'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    commodity = db.Column(db.String(150), nullable=True)
+    discount_percent = db.Column(db.Integer, default=0)
+    valid_from = db.Column(db.Date, nullable=True)
+    valid_to = db.Column(db.Date, nullable=True)
+    active = db.Column(db.Boolean, default=True)
+
+
+# ---------------- Processor models (aligned to existing DB DDL) ----------------
+class Crop(db.Model):
+    __tablename__ = 'crops'
+    id = db.Column(db.Integer, primary_key=True)
+    farmer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    crop_name = db.Column(db.String(100), nullable=False)
+    quantity = db.Column(db.Float, nullable=False)
+    unit = db.Column(db.String(20), nullable=True)
+    price = db.Column(db.Numeric(10,2), nullable=True)
+    province = db.Column(db.String(100), nullable=True)
+
+class Certification(db.Model):
+    __tablename__ = 'certifications'
+    id = db.Column(db.Integer, primary_key=True)
+    product_name = db.Column(db.String(150), nullable=False)
+    cert_date = db.Column(db.Date, nullable=False)
+    expiry_date = db.Column(db.Date, nullable=False)
+    processor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+class DeliverySchedule(db.Model):
+    __tablename__ = 'logistics'
+    id = db.Column(db.Integer, primary_key=True)
+    product_name = db.Column(db.String(150), nullable=False)
+    quantity = db.Column(db.Float, nullable=False)
+    destination = db.Column(db.String(200), nullable=True)
+    delivery_date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(50), default='scheduled')
+    processor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 # ====================================================
 # Flask-Login Config
@@ -280,11 +349,27 @@ def dashboard():
             market_prices = []
             app.logger.error(f"Error fetching market prices: {e}")
 
+        # ---- Available Dealer Inventories (simple list across dealers) ----
+        try:
+            inventories = Inventory.query.order_by(Inventory.product_name.asc()).all()
+        except Exception as e:
+            inventories = []
+            app.logger.error(f"Error fetching inventories: {e}")
+
+        # ---- Farmer's Orders ----
+        try:
+            my_orders = Order.query.filter_by(farmer_id=current_user.id).order_by(desc(Order.created_at)).all()
+        except Exception as e:
+            my_orders = []
+            app.logger.error(f"Error fetching farmer orders: {e}")
+
         return render_template(
             "dashboards/farmer_dashboard.html",
             user=current_user,
             weather_data=weather_data,
-            market_prices=market_prices
+            market_prices=market_prices,
+            inventories=inventories,
+            my_orders=my_orders
         )
 
     # ... other roles unchanged ...
@@ -293,9 +378,66 @@ def dashboard():
     elif role == "promoter":
         return render_template("dashboards/promoter_dashboard.html", user=current_user)
     elif role == "dealer":
-        return render_template("dashboards/dealer_dashboard.html", user=current_user)
+        return redirect(url_for('agro_dealer_dashboard'))
     elif role == "processor":
-        return render_template("dashboards/processor_dashboard.html", user=current_user)
+        # Pull processor-facing datasets
+        try:
+            offers = Crop.query.order_by(desc(Crop.id)).all()
+            crops = [{
+                "farmer_name": (User.query.get(o.farmer_id).full_name if User.query.get(o.farmer_id) else f"Farmer #{o.farmer_id}"),
+                "crop_name": o.crop_name,
+                "quantity": o.quantity,
+                "unit": o.unit or 'kg',
+                "price": float(o.price) if o.price is not None else None,
+                "province": o.province or "-"
+            } for o in offers]
+        except Exception as e:
+            app.logger.error(f"Processor crops fetch error: {e}")
+            crops = []
+
+        try:
+            certs = Certification.query.order_by(desc(Certification.cert_date)).all()
+            certifications = [{
+                "product_name": c.product_name,
+                "cert_date": c.cert_date,
+                "expiry_date": c.expiry_date
+            } for c in certs]
+        except Exception as e:
+            app.logger.error(f"Processor certifications fetch error: {e}")
+            certifications = []
+
+        try:
+            schedules = DeliverySchedule.query.order_by(desc(DeliverySchedule.delivery_date)).all()
+            logistics = [{
+                "product_name": s.product_name,
+                "quantity": s.quantity,
+                "destination": s.destination,
+                "delivery_date": s.delivery_date,
+                "status": s.status
+            } for s in schedules]
+        except Exception as e:
+            app.logger.error(f"Processor logistics fetch error: {e}")
+            logistics = []
+
+        try:
+            po = Order.query.filter(Order.processor_id.isnot(None)).order_by(desc(Order.id)).all()
+            orders = [{
+                "customer_name": (User.query.get(o.customer_id).full_name if o.customer_id else 'Customer'),
+                "product_name": o.product_name,
+                "quantity": o.quantity,
+                "unit": o.unit,
+                "status": o.status
+            } for o in po]
+        except Exception as e:
+            app.logger.error(f"Processor orders fetch error: {e}")
+            orders = []
+
+        return render_template("dashboards/processor_dashboard.html",
+                               user=current_user,
+                               crops=crops,
+                               certifications=certifications,
+                               logistics=logistics,
+                               orders=orders)
     # ---------------- Researcher ----------------
     elif role == "researcher":
         try:
@@ -330,51 +472,119 @@ def dashboard():
             else:
                 chart_data = None
 
-            # -------- Load NISR dataset for charts (bar + histogram) --------
+            # -------- Load NISR dataset for charts (robust parsing) --------
             nisr_chart_data = None
             try:
                 df = pd.read_excel("datasets/Tables_2025_Season_A.xlsx")
+                # Normalize column names for flexible matching
+                normalized = {c: str(c).strip() for c in df.columns}
+                df.columns = list(normalized.values())
+                lower_map = {c.lower(): c for c in df.columns}
 
-                # Average prices by commodity (bar chart)
-                if "Commodity" in df.columns and "Price" in df.columns:
-                    avg_prices = df.groupby("Commodity")["Price"].mean().to_dict()
-                    nisr_chart_data = {
-                        "commodities": list(avg_prices.keys()),
-                        "avg_prices": list(avg_prices.values())
-                    }
+                # Try to find commodity-like and value-like columns
+                commodity_candidates = [k for k in lower_map if any(x in k for x in ["commodity", "crop", "product", "item", "name"])]
+                value_candidates = [k for k in lower_map if any(x in k for x in ["price", "value", "amount", "yield", "production", "qty", "quantity"]) ]
 
-                # Histogram of prices
-                if "Price" in df.columns:
-                    price_series = df["Price"].dropna()
-                    if not price_series.empty:
-                        # Ensure numeric
-                        price_series = pd.to_numeric(price_series, errors="coerce").dropna()
-                        if not price_series.empty:
-                            bins = pd.cut(price_series, bins=10)
+                commodity_col = lower_map.get(commodity_candidates[0]) if commodity_candidates else None
+
+                value_col = None
+                if value_candidates:
+                    # Pick the first numeric-capable candidate
+                    for vk in value_candidates:
+                        col = lower_map[vk]
+                        series = pd.to_numeric(df[col], errors="coerce")
+                        if series.notna().sum() > 0:
+                            value_col = col
+                            break
+                if value_col is None:
+                    # Fallback to first numeric column in the dataset
+                    for col in df.columns:
+                        series = pd.to_numeric(df[col], errors="coerce")
+                        if series.notna().sum() > 0:
+                            value_col = col
+                            break
+
+                if commodity_col and value_col:
+                    numeric_series = pd.to_numeric(df[value_col], errors="coerce")
+                    tmp = df[[commodity_col]].copy()
+                    tmp[value_col] = numeric_series
+                    tmp = tmp.dropna(subset=[value_col])
+                    if not tmp.empty:
+                        avg_values = tmp.groupby(commodity_col)[value_col].mean().sort_values(ascending=False)
+                        nisr_chart_data = {
+                            "commodities": avg_values.index.tolist(),
+                            "avg_prices": [float(v) for v in avg_values.values]
+                        }
+                        # Histogram
+                        hist_series = numeric_series.dropna()
+                        if not hist_series.empty:
+                            bins = pd.cut(hist_series, bins=10)
                             counts = bins.value_counts(sort=False)
                             bin_labels = [f"{interval.left:.0f}-{interval.right:.0f}" for interval in counts.index]
-                            if nisr_chart_data is None:
-                                nisr_chart_data = {}
                             nisr_chart_data.update({
                                 "histogram_bins": bin_labels,
                                 "histogram_counts": counts.tolist()
                             })
+                else:
+                    app.logger.warning("NISR dataset: could not detect commodity/value columns; charts skipped.")
             except Exception as e:
                 app.logger.error(f"Error reading NISR dataset for researcher: {e}")
 
+            # -------- Load Maize production dataset (CSV) --------
+            maize_data = None
+            try:
+                maize_df = pd.read_csv("datasets/rwanda_maize_production_2025.csv")
+                # Normalize column names
+                col_prov = "Provinces"
+                col_dist = "Districts"
+                col_2025 = "2025 Production (MT)"
+                col_2024 = "2024 Production (MT)"
+                col_diff = "Difference (MT)"
+                col_pct = "Change (%)"
+
+                # Aggregate by province for bar/pie charts
+                by_prov = maize_df.groupby(col_prov, dropna=False)[[col_2025, col_2024]].sum().reset_index()
+                provinces = by_prov[col_prov].tolist()
+                prod_2025 = by_prov[col_2025].tolist()
+                prod_2024 = by_prov[col_2024].tolist()
+
+                # Histogram on district-level change percentage
+                # Coerce inf/strings to NaN then drop
+                change_pct_series = pd.to_numeric(maize_df[col_pct].replace([float('inf'), 'inf', 'Inf', 'INF'], pd.NA), errors="coerce").dropna()
+                # Use pandas cut for bins
+                hist_bins = None
+                hist_counts = None
+                if not change_pct_series.empty:
+                    bins = pd.cut(change_pct_series, bins=10)
+                    counts = bins.value_counts(sort=False)
+                    hist_bins = [f"{interval.left:.1f}-{interval.right:.1f}%" for interval in counts.index]
+                    hist_counts = counts.tolist()
+
+                maize_data = {
+                    "provinces": provinces,
+                    "prod_2025": prod_2025,
+                    "prod_2024": prod_2024,
+                    "histogram_bins": hist_bins,
+                    "histogram_counts": hist_counts,
+                    # For preview table
+                    "preview": maize_df.head(10).to_dict(orient="records")
+                }
+            except Exception as e:
+                app.logger.error(f"Error reading Maize production dataset: {e}")
+
         except Exception as e:
             app.logger.error(f"Error preparing researcher data: {e}")
-            market_prices, chart_data, nisr_chart_data = [], None, None
+            market_prices, chart_data, nisr_chart_data, maize_data = [], None, None, None
 
         return render_template(
             "dashboards/researcher_dashboard.html",
             user=current_user,
             market_prices=market_prices,
             chart_data=chart_data,
-            nisr_chart_data=nisr_chart_data
+            nisr_chart_data=nisr_chart_data,
+            maize_data=maize_data
         )
 
-        return render_template("dashboards/researcher_dashboard.html", user=current_user)
     elif role == "policy":
         stats = {
             "farmers": User.query.filter_by(role="farmer").count(),
@@ -408,6 +618,221 @@ def download_nisr_dataset():
         return "Dataset not available", 500
 
 
+# Download route for Maize production dataset
+@app.route('/download/maize_dataset')
+def download_maize_dataset():
+    try:
+        return send_from_directory(
+            directory="datasets",
+            path="rwanda_maize_production_2025.csv",
+            as_attachment=True
+        )
+    except Exception as e:
+        app.logger.error(f"Error downloading Maize dataset: {e}")
+        return "Dataset not available", 500
+@app.route('/agro-dealer-dashboard')
+@login_required
+def agro_dealer_dashboard():
+    # Only dealers should access
+    if current_user.role != 'dealer':
+        flash("Access denied: dealer-only area.", "error")
+        return redirect(url_for('dashboard'))
+
+    # Inventory for this dealer
+    inventory = Inventory.query.filter_by(dealer_id=current_user.id).order_by(Inventory.product_name).all()
+
+    # Orders where this dealer is recipient (latest first)
+    orders = Order.query.filter_by(dealer_id=current_user.id).order_by(desc(Order.created_at)).all()
+
+    # Active subsidies
+    today = date.today()
+    subsidies = Subsidy.query.filter(Subsidy.active == True).all()
+
+    return render_template('dashboards/dealer_dashboard.html',
+                           user=current_user,
+                           inventory=inventory,
+                           orders=orders,
+                           subsidies=subsidies)
+
+# Approve or reject an order
+@app.route('/dealer/order/<int:order_id>/action', methods=['POST'])
+@login_required
+def dealer_order_action(order_id):
+    if current_user.role != 'dealer':
+        flash("Access denied.", "error")
+        return redirect(url_for('dashboard'))
+
+    action = request.form.get('action')  # 'approve' or 'reject' or 'deliver'
+    order = Order.query.get_or_404(order_id)
+    if order.dealer_id != current_user.id:
+        flash("You cannot manage this order.", "error")
+        return redirect(url_for('agro_dealer_dashboard'))
+
+    if action == 'approve':
+        order.status = 'approved'
+        order.updated_at = db.func.now()
+        # Optionally: subtract stock if matching inventory exists
+        inv = Inventory.query.filter_by(dealer_id=current_user.id, product_name=order.product_name).first()
+        if inv:
+            if inv.stock >= order.quantity:
+                inv.stock = inv.stock - order.quantity
+            else:
+                flash("Warning: stock is lower than ordered quantity. Stock will go negative.", "error")
+                inv.stock = inv.stock - order.quantity
+    elif action == 'reject':
+        order.status = 'rejected'
+        order.updated_at = db.func.now()
+    elif action == 'deliver':
+        order.status = 'delivered'
+        order.updated_at = db.func.now()
+    else:
+        flash("Unknown action.", "error")
+        return redirect(url_for('agro_dealer_dashboard'))
+
+    db.session.commit()
+    flash("Order updated.", "success")
+    return redirect(url_for('agro_dealer_dashboard'))
+
+
+# Farmer creates an order
+@app.route('/farmer/order/create', methods=['POST'])
+@login_required
+def farmer_create_order():
+    if current_user.role != 'farmer':
+        flash("Access denied.", "error")
+        return redirect(url_for('dashboard'))
+
+    dealer_id = request.form.get('dealer_id')
+    product_name = request.form.get('product_name')
+    quantity = request.form.get('quantity')
+    unit = request.form.get('unit') or 'kg'
+
+    if not all([dealer_id, product_name, quantity]):
+        flash("Missing required fields.", "error")
+        return redirect(url_for('dashboard'))
+
+    try:
+        # Validate dealer exists and is a dealer
+        dealer_user = User.query.get(int(dealer_id))
+        if not dealer_user or dealer_user.role != 'dealer':
+            flash("Selected dealer is invalid.", "error")
+            return redirect(url_for('dashboard'))
+
+        order = Order(
+            farmer_id=current_user.id,
+            dealer_id=int(dealer_id),
+            product_name=product_name.strip(),
+            quantity=int(quantity),
+            unit=unit.strip(),
+            status='pending',
+            created_at=db.func.now(),
+            updated_at=None
+        )
+        db.session.add(order)
+        db.session.commit()
+        flash("Order submitted to agro-dealer.", "success")
+    except Exception as e:
+        app.logger.error(f"Create order error: {e}")
+        flash("Could not submit order.", "error")
+
+    return redirect(url_for('dashboard'))
+
+# Update inventory stock inline
+@app.route('/dealer/inventory/<int:inv_id>/update', methods=['POST'])
+@login_required
+def dealer_inventory_update(inv_id):
+    if current_user.role != 'dealer':
+        flash("Access denied.", "error")
+        return redirect(url_for('dashboard'))
+
+    inv = Inventory.query.get_or_404(inv_id)
+    if inv.dealer_id != current_user.id:
+        flash("You cannot edit this inventory item.", "error")
+        return redirect(url_for('agro_dealer_dashboard'))
+
+    try:
+        new_stock = int(request.form.get('stock'))
+        new_price = request.form.get('price')
+        inv.stock = new_stock
+        if new_price:
+            inv.price = float(new_price)
+        inv.last_updated = db.func.now()
+        db.session.commit()
+        flash("Inventory updated.", "success")
+    except Exception as e:
+        app.logger.error(f"Inventory update error: {e}")
+        flash("Invalid values.", "error")
+
+    return redirect(url_for('agro_dealer_dashboard'))
+
+
+# Create inventory item
+@app.route('/dealer/inventory/create', methods=['POST'])
+@login_required
+def dealer_inventory_create():
+    if current_user.role != 'dealer':
+        flash("Access denied.", "error")
+        return redirect(url_for('dashboard'))
+
+    product_name = request.form.get('product_name')
+    unit = request.form.get('unit') or 'kg'
+    stock = request.form.get('stock') or 0
+    price = request.form.get('price') or None
+
+    if not product_name:
+        flash("Product name is required.", "error")
+        return redirect(url_for('agro_dealer_dashboard'))
+
+    try:
+        inv = Inventory(
+            dealer_id=current_user.id,
+            product_name=product_name.strip(),
+            stock=int(stock),
+            unit=unit.strip(),
+            price=float(price) if price else None,
+        )
+        db.session.add(inv)
+        db.session.commit()
+        flash("Inventory item created.", "success")
+    except Exception as e:
+        app.logger.error(f"Inventory create error: {e}")
+        flash("Could not create inventory.", "error")
+
+    return redirect(url_for('agro_dealer_dashboard'))
+
+# Create a new subsidy (dealer can propose; admin/policy maker usually creates -- simple form here)
+@app.route('/dealer/subsidy/create', methods=['POST'])
+@login_required
+def dealer_create_subsidy():
+    if current_user.role != 'dealer':
+        flash("Access denied.", "error")
+        return redirect(url_for('dashboard'))
+
+    title = request.form.get('title')
+    commodity = request.form.get('commodity')
+    discount = request.form.get('discount_percent') or 0
+    valid_from = request.form.get('valid_from') or None
+    valid_to = request.form.get('valid_to') or None
+
+    try:
+        s = Subsidy(
+            title=title,
+            commodity=commodity,
+            discount_percent=int(discount),
+            valid_from=date.fromisoformat(valid_from) if valid_from else None,
+            valid_to=date.fromisoformat(valid_to) if valid_to else None,
+            active=True
+        )
+        db.session.add(s)
+        db.session.commit()
+        flash("Subsidy proposal created.", "success")
+    except Exception as e:
+        app.logger.error(f"Error creating subsidy: {e}")
+        flash("Could not create subsidy.", "error")
+
+    return redirect(url_for('agro_dealer_dashboard'))
+
+
 # Researcher Dashboard
 @app.route('/researcher_dashboard')
 def researcher_dashboard():
@@ -415,25 +840,96 @@ def researcher_dashboard():
 
     market_prices = MarketPrice.query.order_by(MarketPrice.date.desc()).all()
 
-    # ✅ Load NISR dataset (preview + chart data)
+    # ✅ Load NISR dataset (preview + robust chart data)
     nisr_preview, nisr_chart_data = None, None
     try:
         df = pd.read_excel("datasets/Tables_2025_Season_A.xlsx")
-
-        # Keep only the first 10 rows for preview
         nisr_preview = df.head(10).to_dict(orient="records")
 
-        # Chart data: average prices per commodity
-        if "Commodity" in df.columns and "Price" in df.columns:
-            avg_prices = df.groupby("Commodity")["Price"].mean().to_dict()
+        normalized = {c: str(c).strip() for c in df.columns}
+        df.columns = list(normalized.values())
+        lower_map = {c.lower(): c for c in df.columns}
 
-            nisr_chart_data = {
-                "commodities": list(avg_prices.keys()),
-                "avg_prices": list(avg_prices.values())
-            }
+        commodity_candidates = [k for k in lower_map if any(x in k for x in ["commodity", "crop", "product", "item", "name"])]
+        value_candidates = [k for k in lower_map if any(x in k for x in ["price", "value", "amount", "yield", "production", "qty", "quantity"]) ]
 
+        commodity_col = lower_map.get(commodity_candidates[0]) if commodity_candidates else None
+
+        value_col = None
+        if value_candidates:
+            for vk in value_candidates:
+                col = lower_map[vk]
+                series = pd.to_numeric(df[col], errors="coerce")
+                if series.notna().sum() > 0:
+                    value_col = col
+                    break
+        if value_col is None:
+            for col in df.columns:
+                series = pd.to_numeric(df[col], errors="coerce")
+                if series.notna().sum() > 0:
+                    value_col = col
+                    break
+
+        if commodity_col and value_col:
+            numeric_series = pd.to_numeric(df[value_col], errors="coerce")
+            tmp = df[[commodity_col]].copy()
+            tmp[value_col] = numeric_series
+            tmp = tmp.dropna(subset=[value_col])
+            if not tmp.empty:
+                avg_values = tmp.groupby(commodity_col)[value_col].mean().sort_values(ascending=False)
+                nisr_chart_data = {
+                    "commodities": avg_values.index.tolist(),
+                    "avg_prices": [float(v) for v in avg_values.values]
+                }
+                hist_series = numeric_series.dropna()
+                if not hist_series.empty:
+                    bins = pd.cut(hist_series, bins=10)
+                    counts = bins.value_counts(sort=False)
+                    bin_labels = [f"{interval.left:.0f}-{interval.right:.0f}" for interval in counts.index]
+                    nisr_chart_data.update({
+                        "histogram_bins": bin_labels,
+                        "histogram_counts": counts.tolist()
+                    })
+        else:
+            app.logger.warning("NISR dataset (standalone): could not detect commodity/value columns; charts skipped.")
     except Exception as e:
         app.logger.error(f"Error reading NISR dataset: {e}")
+
+    # ✅ Load Maize dataset (preview + chart data)
+    maize_data = None
+    try:
+        maize_df = pd.read_csv("datasets/rwanda_maize_production_2025.csv")
+        col_prov = "Provinces"
+        col_dist = "Districts"
+        col_2025 = "2025 Production (MT)"
+        col_2024 = "2024 Production (MT)"
+        col_diff = "Difference (MT)"
+        col_pct = "Change (%)"
+
+        by_prov = maize_df.groupby(col_prov, dropna=False)[[col_2025, col_2024]].sum().reset_index()
+        provinces = by_prov[col_prov].tolist()
+        prod_2025 = by_prov[col_2025].tolist()
+        prod_2024 = by_prov[col_2024].tolist()
+
+        change_pct_series = pd.to_numeric(maize_df[col_pct].replace([float('inf'), 'inf', 'Inf', 'INF'], pd.NA), errors="coerce").dropna()
+        hist_bins = None
+        hist_counts = None
+        if not change_pct_series.empty:
+            bins = pd.cut(change_pct_series, bins=10)
+            counts = bins.value_counts(sort=False)
+            hist_bins = [f"{interval.left:.1f}-{interval.right:.1f}%" for interval in counts.index]
+            hist_counts = counts.tolist()
+
+        maize_data = {
+            "provinces": provinces,
+            "prod_2025": prod_2025,
+            "prod_2024": prod_2024,
+            "histogram_bins": hist_bins,
+            "histogram_counts": hist_counts,
+            "preview": maize_df.head(10).to_dict(orient="records")
+        }
+    except Exception as e:
+        app.logger.error(f"Error reading Maize dataset: {e}")
 
     # Existing DB chart data
     chart_data = None
@@ -455,7 +951,8 @@ def researcher_dashboard():
         market_prices=market_prices,
         chart_data=chart_data,
         nisr_preview=nisr_preview,
-        nisr_chart_data=nisr_chart_data
+        nisr_chart_data=nisr_chart_data,
+        maize_data=maize_data
     )
     
     
@@ -660,3 +1157,40 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+    
+    
+    
+@app.route('/farmer/crops/create', methods=['POST'])
+@login_required
+def farmer_create_crop():
+    if current_user.role != 'farmer':
+        flash("Access denied.", "error")
+        return redirect(url_for('dashboard'))
+
+    crop_name = request.form.get('crop_name')
+    quantity = request.form.get('quantity')
+    unit = request.form.get('unit') or 'kg'
+    price = request.form.get('price')
+    province = request.form.get('province')
+
+    if not crop_name or not quantity:
+        flash("Crop name and quantity are required.", "error")
+        return redirect(url_for('dashboard'))
+
+    try:
+        crop = Crop(
+            farmer_id=current_user.id,
+            crop_name=crop_name.strip(),
+            quantity=float(quantity),
+            unit=unit.strip() if unit else None,
+            price=float(price) if price else None,
+            province=province.strip() if province else None,
+        )
+        db.session.add(crop)
+        db.session.commit()
+        flash("Crop offer published for processors.", "success")
+    except Exception as e:
+        app.logger.error(f"Create crop error: {e}")
+        flash("Could not publish crop offer.", "error")
+
+    return redirect(url_for('dashboard'))
