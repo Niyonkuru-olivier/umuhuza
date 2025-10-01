@@ -5,51 +5,185 @@
   <title>Farmer Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 0; }
-    header { background: #2d9d92; color: white; padding: 15px; text-align: center; }
-    .container { padding: 20px; max-width: 1200px; margin: auto; display: flex; justify-content: space-between; gap: 15px; }
+    body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #f5f7fa;
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
 
-    /* Accordion Buttons */
-    .accordion-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
+header {
+  background: linear-gradient(135deg, #2d9d92, #23897d);
+  color: white;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
 
-    .accordion {
-      background-color: #2d9d92;
-      color: white;
-      cursor: pointer;
-      padding: 15px;
-      width: 100%;
-      text-align: center;
-      border: none;
-      outline: none;
-      transition: 0.4s;
-      border-radius: 5px;
-      margin-bottom: 5px;
-      font-size: 18px;
-    }
+header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 600;
+}
 
-    .accordion.active, .accordion:hover { background-color: #23897d; }
+.container {
+  padding: 25px;
+  max-width: 1400px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  grid-gap: 20px;
+}
 
-    .panel {
-      padding: 10px;
-      display: none;
-      background-color: white;
-      border-radius: 5px;
-      margin-bottom: 15px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      overflow-x: auto;
-    }
+/* Accordion Buttons */
+.accordion {
+  background-color: #2d9d92;
+  color: #fff;
+  cursor: pointer;
+  padding: 16px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  outline: none;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  font-size: 17px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 
-    .chart-container { width: 100%; height: 300px; margin-top: 10px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background: #2d9d92; color: white; }
-    .tip-section { margin-bottom: 15px; }
-    .tip-section h3 { margin-top: 0; color: #2d9d92; }
-    .tip-section ul { padding-left: 20px; }
+.accordion::after {
+  content: '\25BC';
+  font-size: 14px;
+  transition: transform 0.3s;
+}
+
+.accordion.active::after {
+  transform: rotate(-180deg);
+}
+
+.accordion.active,
+.accordion:hover {
+  background-color: #1f726a;
+}
+
+.panel {
+  padding: 18px;
+  display: none;
+  background-color: #fff;
+  border-radius: 8px;
+  margin-top: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+th, td {
+  border: 1px solid #e0e0e0;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+th {
+  background: #2d9d92;
+  color: white;
+  font-weight: 500;
+}
+
+td {
+  background: #fafafa;
+}
+
+tr:nth-child(even) td {
+  background: #f0fdfb;
+}
+
+/* Charts */
+.chart-container {
+  width: 100%;
+  height: 320px;
+  margin-top: 10px;
+}
+
+/* Farming Tips */
+.tip-section {
+  margin-bottom: 20px;
+}
+
+.tip-section h3 {
+  margin-top: 0;
+  color: #2d9d92;
+  font-size: 16px;
+}
+
+.tip-section ul {
+  padding-left: 18px;
+  margin: 6px 0;
+}
+
+.tip-section li {
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+/* Buttons & Forms */
+form input, form button {
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+form button {
+  background: #2d9d92;
+  color: white;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+form button:hover {
+  background: #1f726a;
+}
+
+/* Back link */
+.single-view-back {
+  margin-bottom: 20px;
+}
+
+.single-view-back a {
+  color: #2d9d92;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.single-view-back a:hover {
+  text-decoration: underline;
+}
+
+/* Mobile tweaks */
+@media (max-width: 768px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+}
+
   </style>
 </head>
 <body>
@@ -58,9 +192,12 @@
   </header>
 
   <div class="container">
+    <div id="single-view-back" class="single-view-back" style="display:none;">
+      <a href="{{ url_for('farmer_dashboard') if false else '#' }}" onclick="event.preventDefault(); window.location.href = window.location.pathname;">← Back to all sections</a>
+    </div>
     <!-- Weather Forecast -->
     <div class="accordion-container">
-      <button class="accordion">🌦 Weather Forecast</button>
+      <button class="accordion" data-view="weather">🌦 Weather Forecast</button>
       <div class="panel">
         {% if weather_data.time %}
           <canvas id="temperatureChart" class="chart-container"></canvas>
@@ -74,7 +211,7 @@
 
     <!-- Market Prices -->
     <div class="accordion-container">
-      <button class="accordion">📈 Market Prices</button>
+      <button class="accordion" data-view="market">📈 Market Prices</button>
       <div class="panel">
         {% if market_prices %}
           <table>
@@ -109,7 +246,7 @@
 
     <!-- Available Agro-Dealer Inventory -->
     <div class="accordion-container">
-      <button class="accordion">📦 Available Agro-Dealer Inventory</button>
+      <button class="accordion" data-view="inventory">📦 Available Agro-Dealer Inventory</button>
       <div class="panel">
         {% if inventories %}
           <table>
@@ -152,7 +289,7 @@
 
     <!-- My Orders -->
     <div class="accordion-container">
-      <button class="accordion">🧾 My Orders</button>
+      <button class="accordion" data-view="my-orders">🧾 My Orders</button>
       <div class="panel">
         {% if my_orders %}
           <table>
@@ -189,7 +326,7 @@
 
     <!-- Publish Crop Offers for Processors -->
     <div class="accordion-container">
-      <button class="accordion">🌾 Publish Crops for Processors</button>
+      <button class="accordion" data-view="publish">🌾 Publish Crops for Processors</button>
       <div class="panel">
         <form method="post" action="{{ url_for('farmer_create_crop') }}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
           <input type="text" name="crop_name" placeholder="Crop name (e.g., Maize)" required style="flex:2; padding:8px;" />
@@ -203,9 +340,31 @@
       </div>
     </div>
 
+    <!-- Processor Orders (Farmer Approval) -->
+    <div class="accordion-container">
+      <button class="accordion" data-view="processor-orders">📬 Processor Orders (Approve / Reject)</button>
+      <div class="panel">
+        <table>
+          <thead>
+            <tr>
+              <th>Processor</th>
+              <th>Product</th>
+              <th>Quantity</th>
+              <th>Unit</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="processor-orders-tbody"></tbody>
+        </table>
+        <p id="no-processor-orders" class="small">No processor orders yet.</p>
+      </div>
+    </div>
+
+
     <!-- Farming Tips -->
     <div class="accordion-container">
-      <button class="accordion">💡 Farming Tips</button>
+      <button class="accordion" data-view="tips">💡 Farming Tips</button>
       <div class="panel">
         <div class="tip-section">
           <h3>Crop-Specific Advice</h3>
@@ -252,7 +411,15 @@
     // Accordion: Only one open at a time
     const acc = document.getElementsByClassName("accordion");
     for (let i = 0; i < acc.length; i++) {
-      acc[i].addEventListener("click", function() {
+      acc[i].addEventListener("click", function(e) {
+        const view = this.getAttribute('data-view');
+        if (view) {
+          e.preventDefault();
+          const url = new URL(window.location.href);
+          url.searchParams.set('view', view);
+          window.location.href = url.toString();
+          return;
+        }
         for (let j = 0; j < acc.length; j++) {
           if (acc[j] !== this) {
             acc[j].classList.remove("active");
@@ -264,6 +431,30 @@
         panel.style.display = (panel.style.display === "block") ? "none" : "block";
       });
     }
+
+    // Single-section page view handler using ?view=<key>
+    (function(){
+      const params = new URLSearchParams(window.location.search);
+      const view = params.get('view');
+      if (!view) return;
+      const containers = document.querySelectorAll('.accordion-container');
+      let found = false;
+      containers.forEach(function(c){
+        const btn = c.querySelector('.accordion');
+        if (btn && btn.getAttribute('data-view') === view) {
+          found = true;
+          btn.classList.add('active');
+          const panel = btn.nextElementSibling; if (panel) panel.style.display = 'block';
+          c.style.display = 'block';
+        } else {
+          c.style.display = 'none';
+        }
+      });
+      if (found) {
+        const back = document.getElementById('single-view-back');
+        if (back) back.style.display = 'block';
+      }
+    })();
 
     {% if weather_data.time %}
     const labels = {{ weather_data.time | tojson }};
@@ -283,6 +474,176 @@
       options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
     });
     {% endif %}
+
+    // --- Toast notifications ---
+    function showToast(message) {
+      const t = document.createElement('div');
+      t.style.position = 'fixed';
+      t.style.right = '20px';
+      t.style.bottom = '20px';
+      t.style.background = 'rgba(0,0,0,0.85)';
+      t.style.color = '#fff';
+      t.style.padding = '10px 14px';
+      t.style.borderRadius = '6px';
+      t.style.fontSize = '14px';
+      t.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
+      t.style.opacity = '0';
+      t.style.transform = 'translateY(10px)';
+      t.style.transition = 'opacity .25s ease, transform .25s ease';
+      t.textContent = message;
+      document.body.appendChild(t);
+      requestAnimationFrame(()=>{ t.style.opacity = '1'; t.style.transform = 'translateY(0)'; });
+      setTimeout(()=>{ t.style.opacity = '0'; t.style.transform = 'translateY(10px)'; setTimeout(()=> t.remove(), 250); }, 2500);
+    }
+
+    // --- Shared localStorage order store used by processor and farmer ---
+    function getStoredOrders() {
+      try { return JSON.parse(localStorage.getItem('processor_customer_orders') || '[]'); } catch (e) { return []; }
+    }
+    function saveStoredOrders(orders) {
+      localStorage.setItem('processor_customer_orders', JSON.stringify(orders));
+    }
+
+    function renderFarmerOrders() {
+      const tbody = document.getElementById('processor-orders-tbody');
+      if (!tbody) return;
+      const orders = getStoredOrders();
+      tbody.innerHTML = '';
+      let shown = 0;
+      orders.forEach(o => {
+        // Show only orders that need farmer action and were created by processor
+        if ((o.status || '').toLowerCase() !== 'pending farmer approval') return;
+        if (!o.customer_name || o.customer_name === '{{ user.full_name }}') return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${o.customer_name || ''}</td>
+          <td>${o.product_name || ''}</td>
+          <td>${o.quantity || ''}</td>
+          <td>${o.unit || ''}</td>
+          <td class="status">${o.status || ''}</td>
+          <td>
+            <button class="approve-btn" data-id="${o.id}">Approve</button>
+            <button class="reject-btn" data-id="${o.id}" style="margin-left:6px;">Reject</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+        shown++;
+      });
+      const empty = document.getElementById('no-processor-orders');
+      if (empty) empty.style.display = shown === 0 ? 'block' : 'none';
+
+      // Attach handlers
+      tbody.querySelectorAll('.approve-btn').forEach(btn => btn.addEventListener('click', function() {
+        const id = Number(this.getAttribute('data-id'));
+        const orders = getStoredOrders();
+        const idx = orders.findIndex(o => o.id === id);
+        if (idx >= 0) {
+          orders[idx].status = 'Approved by Farmer';
+          orders[idx].updated_at = new Date().toISOString();
+          saveStoredOrders(orders);
+          renderFarmerOrders();
+          showToast('Order approved.');
+        }
+      }));
+      tbody.querySelectorAll('.reject-btn').forEach(btn => btn.addEventListener('click', function() {
+        const id = Number(this.getAttribute('data-id'));
+        const orders = getStoredOrders();
+        const idx = orders.findIndex(o => o.id === id);
+        if (idx >= 0) {
+          orders[idx].status = 'Rejected by Farmer';
+          orders[idx].updated_at = new Date().toISOString();
+          saveStoredOrders(orders);
+          renderFarmerOrders();
+          showToast('Order rejected.');
+        }
+      }));
+
+      // Add ability to change decision later and delete
+      // Keep approved/rejected orders visible with actions
+      const fullTbody = document.getElementById('processor-orders-tbody');
+      const allOrders = getStoredOrders();
+      allOrders.forEach(o => {
+        if ((o.status || '').toLowerCase() === 'approved by farmer' || (o.status || '').toLowerCase() === 'rejected by farmer') {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${o.customer_name || ''}</td>
+            <td>${o.product_name || ''}</td>
+            <td>${o.quantity || ''}</td>
+            <td>${o.unit || ''}</td>
+            <td class="status">${o.status || ''}</td>
+            <td>
+              <button class="change-decision" data-id="${o.id}">Change decision</button>
+              <button class="delete-decision" data-id="${o.id}" style="margin-left:6px;">Delete</button>
+            </td>
+          `;
+          fullTbody.appendChild(tr);
+        }
+      });
+
+      fullTbody.querySelectorAll('.change-decision').forEach(btn => btn.addEventListener('click', function() {
+        const id = Number(this.getAttribute('data-id'));
+        const orders = getStoredOrders();
+        const idx = orders.findIndex(o => o.id === id);
+        if (idx >= 0) {
+          const current = (orders[idx].status || '').toLowerCase();
+          const next = current.includes('approved') ? 'Rejected by Farmer' : 'Approved by Farmer';
+          orders[idx].status = next;
+          orders[idx].updated_at = new Date().toISOString();
+          saveStoredOrders(orders);
+          renderFarmerOrders();
+          showToast('Decision updated.');
+        }
+      }));
+      fullTbody.querySelectorAll('.delete-decision').forEach(btn => btn.addEventListener('click', function() {
+        const id = Number(this.getAttribute('data-id'));
+        const orders = getStoredOrders();
+        const idx = orders.findIndex(o => o.id === id);
+        if (idx >= 0) {
+          orders.splice(idx, 1);
+          saveStoredOrders(orders);
+          renderFarmerOrders();
+          showToast('Decision and order removed.');
+        }
+      }));
+    }
+
+    // Initial render and sync if other tabs update
+    renderFarmerOrders();
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'processor_customer_orders') {
+        renderFarmerOrders();
+      }
+    });
+
+    // Farmer creates an order for processor
+    const farmerOrderForm = document.getElementById('farmer-create-processor-order');
+    if (farmerOrderForm) {
+      farmerOrderForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const product = document.getElementById('fpo-product').value.trim();
+        const qty = document.getElementById('fpo-qty').value.trim();
+        const unit = document.getElementById('fpo-unit').value.trim();
+        if (!product || !qty) return;
+        const orders = getStoredOrders();
+        orders.push({
+          id: Date.now(),
+          customer_name: '{{ user.full_name }}',
+          farmer_name: '{{ user.full_name }}',
+          product_name: product,
+          quantity: qty,
+          unit: unit || 'kg',
+          status: 'Pending Processor Review',
+          created_at: new Date().toISOString(),
+          updated_at: null
+        });
+        saveStoredOrders(orders);
+        // Clear form
+        document.getElementById('fpo-product').value = '';
+        document.getElementById('fpo-qty').value = '';
+        // Notify
+        alert('Order submitted and visible to the processor.');
+      });
+    }
   </script>
 </body>
 </html>

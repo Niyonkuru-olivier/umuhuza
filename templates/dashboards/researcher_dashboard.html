@@ -77,7 +77,10 @@ commodity of Beans, Maize and Cassava      </p>
 
       <hr style="margin:24px 0; border: none; border-top:1px solid #eee;"/>
       <div class="nisr-title">Rwanda Maize Production (2025 vs 2024) by Province</div>
-      <p style="margin-top:10px;">Download the maize production CSV and explore interactive charts.</p>
+      <p style="margin-top:10px;">Maize Production in Rwanda has shown significant changes between
+        2024 and 2025, with notable increases in several provinces due to improved agricultural 
+        practices and favorable weather conditions. the charts bellow illustrate the Production
+      </p>
       <a href="{{ url_for('download_maize_dataset') }}" class="download-btn">⬇ Download Maize Dataset (CSV)</a>
 
       {% if maize_data %}
@@ -228,6 +231,21 @@ commodity of Beans, Maize and Cassava      </p>
       options: { responsive: true }
     });
     {% endif %}
+  </script>
+  <script>
+    function showToast(msg){
+      var t=document.createElement('div');
+      t.style.position='fixed';t.style.right='20px';t.style.bottom='20px';t.style.background='rgba(0,0,0,0.85)';
+      t.style.color='#fff';t.style.padding='10px 14px';t.style.borderRadius='6px';t.style.fontSize='14px';
+      t.style.boxShadow='0 2px 6px rgba(0,0,0,0.2)';t.style.opacity='0';t.style.transform='translateY(10px)';
+      t.style.transition='opacity .25s ease, transform .25s ease';t.textContent=msg;document.body.appendChild(t);
+      requestAnimationFrame(function(){t.style.opacity='1';t.style.transform='translateY(0)';});
+      setTimeout(function(){t.style.opacity='0';t.style.transform='translateY(10px)'; setTimeout(function(){t.remove();},250);},2500);
+    }
+    // Toast when toggling accordion sections
+    document.querySelectorAll('.accordion').forEach(function(btn){
+      btn.addEventListener('click', function(){ showToast('Toggled: ' + (btn.textContent || 'Section')); });
+    });
   </script>
 </body>
 </html>
