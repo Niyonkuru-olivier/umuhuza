@@ -14,7 +14,7 @@
 }
 
 header {
-  background: linear-gradient(135deg, #2d9d92, #23897d);
+  background: linear-gradient(135deg, #022b16, #022b16);
   color: white;
   padding: 20px;
   text-align: center;
@@ -38,7 +38,7 @@ header h1 {
 
 /* Accordion Buttons */
 .accordion {
-  background-color: #2d9d92;
+  background-color: #022b16;
   color: #fff;
   cursor: pointer;
   padding: 16px;
@@ -67,17 +67,15 @@ header h1 {
 
 .accordion.active,
 .accordion:hover {
-  background-color: #1f726a;
+  background-color: #022b16;
 }
 
 .panel {
-  padding: 18px;
-  display: none;
-  background-color: #fff;
-  border-radius: 8px;
-  margin-top: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  animation: fadeIn 0.3s ease;
+ display: none; /* Hidden by default */
+  padding: 15px;
+  background-color: white;
+  border: 1px solid #ccc;
+
 }
 
 @keyframes fadeIn {
@@ -100,7 +98,7 @@ th, td {
 }
 
 th {
-  background: #2d9d92;
+  background: #022b16;
   color: white;
   font-weight: 500;
 }
@@ -127,7 +125,7 @@ tr:nth-child(even) td {
 
 .tip-section h3 {
   margin-top: 0;
-  color: #2d9d92;
+  color: #022b16;
   font-size: 16px;
 }
 
@@ -150,7 +148,7 @@ form input, form button {
 }
 
 form button {
-  background: #2d9d92;
+  background: #022b16;
   color: white;
   border: none;
   font-weight: 500;
@@ -159,7 +157,7 @@ form button {
 }
 
 form button:hover {
-  background: #1f726a;
+  background: #022b16;
 }
 
 /* Back link */
@@ -168,7 +166,7 @@ form button:hover {
 }
 
 .single-view-back a {
-  color: #2d9d92;
+  color: #022b16;
   text-decoration: none;
   font-weight: 500;
 }
@@ -204,7 +202,8 @@ form button:hover {
           <canvas id="rainfallChart" class="chart-container"></canvas>
         {% else %}
           <p class="small">Weather data not available.</p>
-          {% if weather_data.error %}<p class="small">Error: {{ weather_data.error }}</p>{% endif %}
+          {% if weather_data.error %}<p class="small">Error: {{ weather_data.error }}</p>
+          {% endif %}
         {% endif %}
       </div>
     </div>
@@ -274,7 +273,7 @@ form button:hover {
                     <input type="hidden" name="product_name" value="{{ item.product_name }}" />
                     <input type="number" name="quantity" placeholder="Qty" min="1" required style="width:80px; padding:6px;" />
                     <input type="text" name="unit" value="{{ item.unit }}" style="width:70px; padding:6px;" />
-                    <button type="submit" style="padding:6px 10px; background:#2d9d92; color:#fff; border:none; border-radius:4px; cursor:pointer;">Order</button>
+                    <button type="submit" style="padding:6px 10px; background:#022b16; color:#fff; border:none; border-radius:4px; cursor:pointer;">Order</button>
                   </form>
                 </td>
               </tr>
@@ -334,7 +333,7 @@ form button:hover {
           <input type="text" name="unit" placeholder="Unit (e.g., kg, ton)" value="kg" style="width:140px; padding:8px;" />
           <input type="number" step="0.01" name="price" placeholder="Price (optional)" style="width:160px; padding:8px;" />
           <input type="text" name="province" placeholder="Province (optional)" style="width:180px; padding:8px;" />
-          <button type="submit" style="padding:8px 12px; background:#2d9d92; color:#fff; border:none; border-radius:4px; cursor:pointer;">Publish</button>
+          <button type="submit" style="padding:8px 12px; background:#022b16; color:#fff; border:none; border-radius:4px; cursor:pointer;">Publish</button>
         </form>
         <p class="small">Once published, your offer appears under "Available Crops" on the Processor dashboard.</p>
       </div>

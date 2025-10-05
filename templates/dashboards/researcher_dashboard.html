@@ -7,28 +7,33 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: Arial, sans-serif; background: #eef2fb; margin: 0; padding: 0; }
-    header { background: #283593; color: white; padding: 15px; text-align: center; }
+    header { background: #022b16; color: white; padding: 15px; text-align: center; }
     .container { padding: 20px; max-width: 1100px; margin: auto; display: flex; flex-direction: column; gap: 15px; }
 
-    .accordion { background-color: #283593; color: white; cursor: pointer; padding: 20px; text-align: center;
+    .accordion { background-color: #022b16; color: white; cursor: pointer; 
+      padding: 20px; text-align: center;
                  font-size: 18px; border: none; outline: none; transition: 0.4s; border-radius: 8px;
                  box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    .accordion.active, .accordion:hover { background-color: #1a237e; }
+    .accordion.active, .accordion:hover { background-color: #022b16; }
     .panel { padding: 15px; display: none; background-color: white; border-radius: 8px;
-             box-shadow: 0 2px 5px rgba(0,0,0,0.1); animation: fadeIn 0.3s ease-in-out; overflow-x: auto; }
+             box-shadow: 0 2px 5px rgba(0,0,0,0.1); animation: fadeIn 0.3s ease-in-out; 
+             overflow-x: auto; }
 
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background: #283593; color: white; }
-    a.download-btn { display: inline-block; margin-top: 10px; padding: 10px 15px; background: #283593; color: white; text-decoration: none; border-radius: 5px; }
-    a.download-btn:hover { background: #1a237e; }
+    th { background: #022b16; color: white; }
+    a.download-btn { display: inline-block; margin-top: 10px; padding: 10px 15px; 
+      background: #022b16; color: white; text-decoration: none; border-radius: 5px; }
+    a.download-btn:hover { background: #022b16; }
 
     .chart-container { margin-top: 20px; }
     canvas { width: 100% !important; height: 350px !important; }
 
-    .nisr-title { background:#fff3e0; padding:12px; border-radius:6px; color:#6b4226; font-weight:600; }
+    .nisr-title { background:#fff3e0; padding:12px; border-radius:6px; 
+      color:#6b4226; font-weight:600; }
 
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to
+     { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
 <body>
