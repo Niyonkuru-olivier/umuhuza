@@ -36,7 +36,7 @@ The platform helps to:
 
 ##  Data & Dashboards
 
-### 🧑‍🌾 Farmer Dashboard
+###  Farmer Dashboard
 
 **Purpose:** Empower farmers with actionable information and tools.
 
@@ -90,7 +90,7 @@ The platform helps to:
 
 ---
 
-### 🧑‍🌾 Agro-Dealer Dashboard
+###  Agro-Dealer Dashboard
 
 **Purpose:** Manage input supply and farmer orders.
 
@@ -134,7 +134,7 @@ The platform helps to:
 
 ---
 
-## 👥 User Roles & Permissions
+##  User Roles & Permissions
 
 | Role | Description | Key Abilities |
 |------|--------------|----------------|
@@ -198,5 +198,4 @@ The platform communicates:
 
 ---
 
-## 🧭 Navigation Map
 
